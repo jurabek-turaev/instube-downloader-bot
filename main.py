@@ -36,7 +36,7 @@ async def handle_links(message: Message):
     url = message.text
 
     if "youtube.com" in url or "youtu.be" in url or "instagram.com" in url:
-        status_msg = await message.answer("⌛ Video is downloading. Please wait...")
+        status_msg = await message.answer("⌛")
 
         try:
             filepath = await asyncio.to_thread(download_video, url)
