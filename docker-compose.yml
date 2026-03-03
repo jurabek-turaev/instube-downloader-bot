@@ -1,0 +1,7 @@
+services:
+  instube-bot:
+    build: .
+    container_name: instube-downloader-bot
+    restart: unless-stopped
+    env_file:
+      - .env
