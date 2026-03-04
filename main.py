@@ -1,4 +1,4 @@
-from aiogram import Bot, Dispatcher, types
+from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
 from aiogram.types import FSInputFile, Message
 from dotenv import load_dotenv
@@ -36,7 +36,7 @@ async def handle_links(message: Message):
     url = message.text
 
     if "youtube.com" in url or "youtu.be" in url or "instagram.com" in url:
-        status_msg = await message.answer("⌛")
+        status_msg = await message.answer("⌛ ")
 
         try:
             filepath = await asyncio.to_thread(download_video, url)
