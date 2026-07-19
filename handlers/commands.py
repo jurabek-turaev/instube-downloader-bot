@@ -1,12 +1,19 @@
+import logging
 from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message
 
 router = Router()
-
+logger = logging.getLogger(__name__)
 
 @router.message(Command("start"))
 async def cmd_start(message: Message):
+    telegram_id = message.from_user.id
+    fullname = message.from_user.full_name
+    username = message.from_user.username
+
+    logger.info("New user: ID=%s, Fullname=%s, Username=%s", telegram_id, fullname, username)
+    
     await message.answer(
         "👋 <b>Hi there!</b>\n\n"
         "I download media and convert it between Telegram formats.\n\n"
