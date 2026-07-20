@@ -19,6 +19,12 @@ SUPPORTED_DOMAINS = ("youtube.com", "youtu.be", "instagram.com")
 
 @router.callback_query(F.data.startswith("dl:"))
 async def handle_download(callback: CallbackQuery):
+    telegram_id = callback.from_user.id
+    fullname = callback.from_user.full_name
+    username = callback.from_user.username
+
+    logger.info("Download video: ID=%s, Fullname=%s, Username=%s", telegram_id, fullname, username)
+
     media_type = callback.data.split(":")[1]  # "video" or "audio"
 
     # The original URL is in the message we replied to.
@@ -30,7 +36,7 @@ async def handle_download(callback: CallbackQuery):
     url = original.text
     await callback.answer()  # stop the button's loading spinner
 
-    status_msg = await callback.message.answer("⌛ ")
+    status_msg = await callback.message.answer("⌛")
     filepath = None
     try:
         filepath = await asyncio.to_thread(download_video, url, media_type)
