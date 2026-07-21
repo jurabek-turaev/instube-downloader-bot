@@ -74,8 +74,8 @@ async def handle_links(message: Message):
     if any(domain in url for domain in SUPPORTED_DOMAINS):
         # Show format choice instead of downloading immediately.
         keyboard = InlineKeyboardMarkup(inline_keyboard=[[
-            InlineKeyboardButton(text="🎬 Video", callback_data="dl:video"),
-            InlineKeyboardButton(text="🎧 Audio", callback_data="dl:audio"),
+            InlineKeyboardButton(text="🎬 Video", callback_data="dl:video", style="success"),
+            InlineKeyboardButton(text="🎧 Audio", callback_data="dl:audio", style="primary"),
         ]])
         # Reply to the user's message so the callback can read the URL back.
         await message.reply("Choose a format:", reply_markup=keyboard)

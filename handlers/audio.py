@@ -64,7 +64,7 @@ async def voice_to_audio(message: Message, state: FSMContext):
         prompt = await message.answer(
             "📝 Send a name for the mp3 file:",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
-                InlineKeyboardButton(text="⏭ Skip", callback_data="name:skip"),
+                InlineKeyboardButton(text="⏭ Skip", callback_data="name:skip", style="danger"),
             ]]),
         )
         # Remember the file and the prompt so the next step can use them.
