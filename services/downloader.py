@@ -1,5 +1,8 @@
 import os
+import sys
 import yt_dlp
+import tempfile
+import subprocess
 from config import COOKIES_FILE, DOWNLOADS_DIR, MAX_FILESIZE
 
 
@@ -45,3 +48,16 @@ def download_video(url: str, media_type: str) -> str:
         
         return ydl.prepare_filename(info)
 
+
+def download_images(url: str) -> list[str]:
+    """Download Instagram images/carousel with gallery-dl. Returns file paths."""
+    out_dir = tempfile.mkdtemp(prefix="gdl_", dir=DOWNLOADS_DIR)
+
+    cmd = [sys.executable, "-m", "gallery_dl", "-D", out_dir, url]
+    if os.path.exists(COOKIES_FILE):
+        cmd[3:3] = ["--cookies", COOKIES_FILE]
+
+    subprocess.run(cmd, check=True, capture_output=True, text=True)
+
+    files = sorted(os.path.join(out_dir, f) for f in os.listdir(out_dir))
+    return files[:10]

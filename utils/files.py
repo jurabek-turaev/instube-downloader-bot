@@ -1,4 +1,5 @@
 import os
+import shutil
 from config import MAX_FILESIZE
 
 def is_too_large(file_size: int | None) -> bool:
@@ -11,4 +12,10 @@ def cleanup(*paths: str) -> None:
     for path in paths:
         if path and os.path.exists(path):
             os.remove(path)
+
+
+def cleanup_dir(path: str) -> None:
+    """Remove a directory and everyting in it, if it exists."""
+    if path and os.path.exists(path):
+        shutil.rmtree(path, ignore_errors=True)
 
