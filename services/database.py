@@ -77,3 +77,13 @@ def get_all_users() -> list[sqlite3.Row]:
             FROM users
             ORDER BY joined_at
         """).fetchall()
+
+
+def increment_downloads(telegram_id: int) -> None:
+    """Increment a user's successful download counter by one."""
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute(
+            "UPDATE users SET downloads_count = downloads_count + 1 "
+            "WHERE telegram_id = ?",
+            (telegram_id,),
+        )

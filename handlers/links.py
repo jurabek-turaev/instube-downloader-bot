@@ -12,6 +12,7 @@ from aiogram.types import (
 
 from services.downloader import download_video, download_images
 from utils.files import cleanup, cleanup_dir
+from services.database import increment_downloads
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -33,6 +34,8 @@ async def download_and_send(message: Message, url: str, media_type: str):
             await message.answer_audio(audio=media_file)
         else:
             await message.answer_video(video=media_file)
+
+        await asyncio.to_thread(increment_downloads, message.from_user.id)
 
     except ValueError as e:
         if str(e) == "file_too_large":
@@ -62,6 +65,7 @@ async def handle_instagram(message: Message, url: str):
         try:
             filepath = await asyncio.to_thread(download_video, url, "video")
             await message.answer_video(video=FSInputFile(filepath))
+            await asyncio.to_thread(increment_downloads, message.from_user.id)
             return
         except yt_dlp.utils.DownloadError as e:
             if "No video formats" not in str(e):
@@ -77,6 +81,7 @@ async def handle_instagram(message: Message, url: str):
         for path in files:
             album.add_photo(media=FSInputFile(path))
         await message.answer_media_group(media=album.build())
+        await asyncio.to_thread(increment_downloads, message.from_user.id)
 
     except ValueError as e:
         if str(e) == "file_too_large":
@@ -96,12 +101,6 @@ async def handle_instagram(message: Message, url: str):
 
 @router.callback_query(F.data.startswith("dl:"))
 async def handle_download(callback: CallbackQuery):
-    telegram_id = callback.from_user.id
-    fullname = callback.from_user.full_name
-    username = callback.from_user.username
-
-    logger.info("Download video: ID=%s, Fullname=%s, Username=%s", telegram_id, fullname, username)
-
     media_type = callback.data.split(":")[1]  # "video" or "audio"
 
     # The original URL is in the message we replied to.
