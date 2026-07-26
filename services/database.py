@@ -43,3 +43,37 @@ def upsert_user(
                 last_active = datetime('now'),
                 is_active   = 1
         """, (telegram_id, username, full_name, language))
+
+
+def get_stats() -> dict:
+    """Return aggregate user statistics for the /stats command."""
+    with sqlite3.connect(DB_PATH) as conn:
+        row = conn.execute("""
+            SELECT
+                COUNT(*)                                             AS total,
+                COUNT(*) FILTER (WHERE is_active = 1)                AS active,
+                COUNT(*) FILTER (WHERE date(joined_at) = date('now')) AS today,
+                COUNT(*) FILTER (WHERE joined_at >= datetime('now', '-7 days')) AS week,
+                COALESCE(SUM(downloads_count), 0)                    AS downloads
+            FROM users
+        """).fetchone()
+
+    return {
+        "total": row[0],
+        "active": row[1],
+        "today": row[2],
+        "week": row[3],
+        "downloads": row[4],
+    }
+
+
+def get_all_users() -> list[sqlite3.Row]:
+    """Return every user row for the /export command."""
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row
+        return conn.execute("""
+            SELECT telegram_id, username, full_name, language,
+                   joined_at, last_active, downloads_count, is_active
+            FROM users
+            ORDER BY joined_at
+        """).fetchall()

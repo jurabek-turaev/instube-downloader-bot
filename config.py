@@ -11,6 +11,11 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 COOKIES_FILE = os.getenv("COOKIES_FILE", "cookies.txt")
 DB_PATH = os.getenv("DB_PATH", "bot.db")
+ADMIN_ID = int(os.getenv("ADMIN_ID"))
+
+def is_admin(telegram_id: int) -> bool:
+    return telegram_id == ADMIN_ID
+
 
 DOWNLOADS_DIR = "downloads"
 MAX_FILESIZE = 52428800

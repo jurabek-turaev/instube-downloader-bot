@@ -1,7 +1,12 @@
 import logging
+import asyncio
 from aiogram import Router
+from aiogram.types import Message, FSInputFile
 from aiogram.filters import Command
-from aiogram.types import Message
+from config import is_admin
+from services.database import get_stats
+from services.export import build_users_xlsx
+from utils.files import cleanup
 
 router = Router()
 logger = logging.getLogger(__name__)
@@ -28,3 +33,40 @@ async def cmd_start(message: Message):
         "<i>Max file size: 50 MB</i>",
         parse_mode="HTML",
     )
+
+@router.message(Command("stats"))
+async def cmd_stats(message: Message):
+    if not is_admin(message.from_user.id):
+        return
+
+    s = await asyncio.to_thread(get_stats)
+    await message.answer(
+        "📊 <b>Bot statistics</b>\n\n"
+        f"👥 Total users: <b>{s['total']}</b>\n"
+        f"✅ Active: <b>{s['active']}</b>\n"
+        f"🆕 Joined today: <b>{s['today']}</b>\n"
+        f"📅 Last 7 days: <b>{s['week']}</b>\n"
+        f"⬇️ Total downloads: <b>{s['downloads']}</b>",
+        parse_mode="HTML",
+    )
+
+
+@router.message(Command("export"))
+async def cmd_export(message: Message):
+    if not is_admin(message.from_user.id):
+        return
+
+    status = await message.answer("⌛ Building export...")
+    path = None
+    try:
+        path = await asyncio.to_thread(build_users_xlsx)
+        await message.answer_document(
+            document=FSInputFile(path, filename="users.xlsx"),
+            caption="📊 Users export",
+        )
+    except Exception:
+        logger.exception("Export failed")
+        await message.answer("❌ Couldn't build the export. Please try again.")
+    finally:
+        await status.delete()
+        cleanup(path)
