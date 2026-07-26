@@ -13,3 +13,6 @@ wheels/
 downloads/
 
 cookies.txt
+cookies.txt*
+
+bot.db

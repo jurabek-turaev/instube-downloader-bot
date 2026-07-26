@@ -4,12 +4,15 @@ import os
 
 from config import DOWNLOADS_DIR, bot, dp
 from handlers import audio, commands, links, video
+from services.database import init_db
+from middleware.user import UserMiddleware
 
 logger = logging.getLogger(__name__)
-
+dp.message.middleware(UserMiddleware())
 
 async def main():
     os.makedirs(DOWNLOADS_DIR, exist_ok=True)
+    init_db()
 
     # Router order defines handler priority: specific media types must come
     # before links.router, whose catch-all @router.message() would otherwise

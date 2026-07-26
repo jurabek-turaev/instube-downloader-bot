@@ -10,6 +10,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 COOKIES_FILE = os.getenv("COOKIES_FILE", "cookies.txt")
+DB_PATH = os.getenv("DB_PATH", "bot.db")
 
 DOWNLOADS_DIR = "downloads"
 MAX_FILESIZE = 52428800
