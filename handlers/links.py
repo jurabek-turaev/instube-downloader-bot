@@ -19,6 +19,34 @@ router = Router()
 
 YOUTUBE_DOMAINS = ("youtube.com", "youtu.be")
 INSTAGRAM_DOMAINS = ("instagram.com",)
+IMAGE_EXTS = (".jpeg", ".jpg", ".png", ".webp", ".heic")
+
+async def handle_story(message: Message, url: str):
+    """Instagram story: download the single item and send it as video or photo."""
+    status_msg = await message.answer("⌛")
+    image_dir = None
+    try:
+        files = await asyncio.to_thread(download_images, url)
+        if not files:
+            await message.answer("❌ Couldn't find this story. It may have expired.")
+            return
+        image_dir = os.path.dirname(files[0])
+
+        path = files[0]
+        if path.lower().endswith(IMAGE_EXTS):
+            await message.answer_photo(photo=FSInputFile(path))
+        else:
+            await message.answer_video(video=FSInputFile(path))
+
+        await asyncio.to_thread(increment_downloads, message.from_user.id)
+
+    except Exception:
+        logger.exception("Story download failed for %s", url)
+        await message.answer("❌ Couldn't download this story. It may be private or expired.")
+    finally:
+        await status_msg.delete()
+        if image_dir:
+            cleanup_dir(image_dir)
 
 
 async def download_and_send(message: Message, url: str, media_type: str):
@@ -133,7 +161,10 @@ async def handle_links(message: Message):
         await message.reply("Choose a format:", reply_markup=keyboard)
 
     elif any(domain in url for domain in INSTAGRAM_DOMAINS):
-        await handle_instagram(message, url)
+        if "/stories/" in url:
+            await handle_story(message, url)
+        else:
+            await handle_instagram(message, url)
 
     else:
         await message.answer("Please, send me a correct link of YouTube or Instagram.")
