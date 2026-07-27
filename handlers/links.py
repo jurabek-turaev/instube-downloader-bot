@@ -34,9 +34,9 @@ async def handle_story(message: Message, url: str):
 
         path = files[0]
         if path.lower().endswith(IMAGE_EXTS):
-            await message.answer_photo(photo=FSInputFile(path))
+            await message.answer_photo(photo=FSInputFile(path), caption="📥 Downloaded via @instubedownloaderbot")
         else:
-            await message.answer_video(video=FSInputFile(path))
+            await message.answer_video(video=FSInputFile(path), caption="📥 Downloaded via @instubedownloaderbot")
 
         await asyncio.to_thread(increment_downloads, message.from_user.id)
 
@@ -59,9 +59,9 @@ async def download_and_send(message: Message, url: str, media_type: str):
 
         media_file = FSInputFile(filepath)
         if media_type == "audio":
-            await message.answer_audio(audio=media_file)
+            await message.answer_audio(audio=media_file, caption="📥 Downloaded via @instubedownloaderbot")
         else:
-            await message.answer_video(video=media_file)
+            await message.answer_video(video=media_file, caption="📥 Downloaded via @instubedownloaderbot")
 
         await asyncio.to_thread(increment_downloads, message.from_user.id)
 
@@ -92,7 +92,7 @@ async def handle_instagram(message: Message, url: str):
     try:
         try:
             filepath = await asyncio.to_thread(download_video, url, "video")
-            await message.answer_video(video=FSInputFile(filepath))
+            await message.answer_video(video=FSInputFile(filepath), caption="📥 Downloaded via @instubedownloaderbot")
             await asyncio.to_thread(increment_downloads, message.from_user.id)
             return
         except yt_dlp.utils.DownloadError as e:
@@ -105,7 +105,7 @@ async def handle_instagram(message: Message, url: str):
             return
         image_dir = os.path.dirname(files[0])
 
-        album = MediaGroupBuilder()
+        album = MediaGroupBuilder(caption="📥 Downloaded via @instubedownloaderbot")
         for path in files:
             album.add_photo(media=FSInputFile(path))
         await message.answer_media_group(media=album.build())
