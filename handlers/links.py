@@ -105,10 +105,17 @@ async def handle_instagram(message: Message, url: str):
             return
         image_dir = os.path.dirname(files[0])
 
-        album = MediaGroupBuilder(caption="📥 Downloaded via @instubedownloaderbot")
-        for path in files:
-            album.add_photo(media=FSInputFile(path))
-        await message.answer_media_group(media=album.build())
+        fir, sec = files[:10], files[10:]
+
+        album_1 = MediaGroupBuilder(caption="📥 Downloaded via @instubedownloaderbot")
+        album_2 = MediaGroupBuilder(caption="📥 Downloaded via @instubedownloaderbot")
+        for fir_path in fir:
+            album_1.add_photo(media=FSInputFile(fir_path))
+        await message.answer_media_group(media=album_1.build())
+        if sec:
+            for sec_path in sec:
+                album_2.add_photo(media=FSInputFile(sec_path))
+            await message.answer_media_group(media=album_2.build())
         await asyncio.to_thread(increment_downloads, message.from_user.id)
 
     except ValueError as e:

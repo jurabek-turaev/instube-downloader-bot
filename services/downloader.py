@@ -60,4 +60,4 @@ def download_images(url: str) -> list[str]:
     subprocess.run(cmd, check=True, capture_output=True, text=True)
 
     files = sorted(os.path.join(out_dir, f) for f in os.listdir(out_dir))
-    return files[:10]
+    return files
