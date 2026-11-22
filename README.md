@@ -134,7 +134,7 @@ uv run main.py
 
 ## ⚠️ Limitations
 
-- **50 MB file limit.** The Telegram Bot API caps bot uploads at 50 MB. Larger files are rejected with a clear message. Raising this to 2 GB requires running a [Local Bot API Server](https://github.com/tdlib/telegram-bot-api) — planned, not implemented yet.
+- **File limits.** The Telegram Bot API caps bot uploads at 50 MB and files the bot can fetch from users at 20 MB, so conversions accept files up to 20 MB and downloads up to 50 MB. Larger files are rejected with a clear message. Raising this to 2 GB requires running a [Local Bot API Server](https://github.com/tdlib/telegram-bot-api) — planned, not implemented yet.
 - **Video notes are capped at 60 seconds** by Telegram. Longer videos are trimmed to the first 60s.
 - **Private content.** Private Instagram accounts and age-restricted YouTube videos need valid cookies from an account with access.
 - **Round video notes recorded by Telegram** have empty corners. Converting them back to a regular video shows white corners — the pixels were never recorded. Video notes the bot created from a full-frame video convert back with the corners intact.

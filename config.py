@@ -11,14 +11,21 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 COOKIES_FILE = os.getenv("COOKIES_FILE", "cookies.txt")
 DB_PATH = os.getenv("DB_PATH", "bot.db")
-ADMIN_ID = int(os.getenv("ADMIN_ID"))
+_admin_id = os.getenv("ADMIN_ID", "").strip()
+ADMIN_ID = int(_admin_id) if _admin_id.isdigit() else None
+if ADMIN_ID is None:
+    logging.warning("ADMIN_ID is not set or invalid — admin commands are disabled.")
+
 
 def is_admin(telegram_id: int) -> bool:
-    return telegram_id == ADMIN_ID
+    return ADMIN_ID is not None and telegram_id == ADMIN_ID
 
 
 DOWNLOADS_DIR = "downloads"
-MAX_FILESIZE = 52428800
+# Bot API limit for files the bot uploads (sendVideo, sendAudio, ...).
+MAX_FILESIZE = 50 * 1024 * 1024
+# Bot API limit for files the bot downloads from users (getFile).
+MAX_INCOMING_FILESIZE = 20 * 1024 * 1024
 
 VIDEO_NOTE_SIZE = 384
 VIDEO_NOTE_MAX_DURATION = 60

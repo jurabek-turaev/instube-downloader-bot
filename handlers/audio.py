@@ -26,7 +26,7 @@ async def audio_to_voice(message: Message):
     audio = message.audio
 
     if is_too_large(audio.file_size):
-        await message.reply("❌ This file is too large (over 50MB).")
+        await message.reply("❌ This file is too large (over 20MB).")
         return
 
     status_msg = await message.reply("⌛ Converting to voice...")
@@ -50,7 +50,7 @@ async def voice_to_audio(message: Message, state: FSMContext):
     voice = message.voice
 
     if is_too_large(voice.file_size):
-        await message.reply("❌ This file is too large (over 50MB).")
+        await message.reply("❌ This file is too large (over 20MB).")
         return
 
     status_msg = await message.reply("⌛ Converting to mp3...")

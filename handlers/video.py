@@ -17,7 +17,7 @@ async def video_to_note(message: Message):
     video = message.video
 
     if is_too_large(video.file_size):
-        await message.reply("❌ This file is too large (over 50MB).")
+        await message.reply("❌ This file is too large (over 20MB).")
         return
 
     # Video notes are capped by Telegram; tell the user we'll trim it.
@@ -48,7 +48,7 @@ async def note_to_video(message: Message):
     video_note = message.video_note
 
     if is_too_large(video_note.file_size):
-        await message.reply("❌ This file is too large (over 50MB).")
+        await message.reply("❌ This file is too large (over 20MB).")
         return
 
     status_msg = await message.reply("⌛ Converting to video...")

@@ -10,7 +10,8 @@ from aiogram.types import (
     InlineKeyboardMarkup, Message,
 )
 
-from services.downloader import download_video, download_images
+from config import MAX_FILESIZE
+from services.downloader import MultipleMediaError, download_images, download_video
 from utils.files import cleanup, cleanup_dir
 from services.database import increment_downloads
 
@@ -20,6 +21,41 @@ router = Router()
 YOUTUBE_DOMAINS = ("youtube.com", "youtu.be")
 INSTAGRAM_DOMAINS = ("instagram.com",)
 IMAGE_EXTS = (".jpeg", ".jpg", ".png", ".webp", ".heic")
+
+CAPTION = "📥 Downloaded via @instubedownloaderbot"
+ALBUM_LIMIT = 10  # Telegram allows at most 10 items per media group
+
+
+def _is_image(path: str) -> bool:
+    return path.lower().endswith(IMAGE_EXTS)
+
+
+async def send_media_files(message: Message, files: list[str]) -> int:
+    """Send photos/videos (one by one or as albums). Returns how many were sent."""
+    sendable = [f for f in files if os.path.getsize(f) <= MAX_FILESIZE]
+    skipped = len(files) - len(sendable)
+
+    if len(sendable) == 1:
+        path = sendable[0]
+        if _is_image(path):
+            await message.answer_photo(photo=FSInputFile(path), caption=CAPTION)
+        else:
+            await message.answer_video(video=FSInputFile(path), caption=CAPTION)
+    else:
+        for i in range(0, len(sendable), ALBUM_LIMIT):
+            album = MediaGroupBuilder(caption=CAPTION)
+            for path in sendable[i:i + ALBUM_LIMIT]:
+                if _is_image(path):
+                    album.add_photo(media=FSInputFile(path))
+                else:
+                    album.add_video(media=FSInputFile(path))
+            await message.answer_media_group(media=album.build())
+
+    if skipped:
+        await message.answer(f"⚠️ {skipped} item(s) were skipped: larger than 50MB.")
+
+    return len(sendable)
+
 
 async def handle_story(message: Message, url: str):
     """Instagram story: download the single item and send it as video or photo."""
@@ -32,13 +68,8 @@ async def handle_story(message: Message, url: str):
             return
         image_dir = os.path.dirname(files[0])
 
-        path = files[0]
-        if path.lower().endswith(IMAGE_EXTS):
-            await message.answer_photo(photo=FSInputFile(path), caption="📥 Downloaded via @instubedownloaderbot")
-        else:
-            await message.answer_video(video=FSInputFile(path), caption="📥 Downloaded via @instubedownloaderbot")
-
-        await asyncio.to_thread(increment_downloads, message.from_user.id)
+        if await send_media_files(message, files[:1]):
+            await asyncio.to_thread(increment_downloads, message.from_user.id)
 
     except Exception:
         logger.exception("Story download failed for %s", url)
@@ -49,8 +80,12 @@ async def handle_story(message: Message, url: str):
             cleanup_dir(image_dir)
 
 
-async def download_and_send(message: Message, url: str, media_type: str):
-    """Download a link and send it, with a status message and cleanup."""
+async def download_and_send(message: Message, user_id: int, url: str, media_type: str):
+    """Download a link and send it, with a status message and cleanup.
+
+    `user_id` is passed explicitly: when called from a button, `message` is
+    the bot's own message, so `message.from_user` would be the bot.
+    """
     status_msg = await message.answer("⌛")
     filepath = None
 
@@ -59,11 +94,11 @@ async def download_and_send(message: Message, url: str, media_type: str):
 
         media_file = FSInputFile(filepath)
         if media_type == "audio":
-            await message.answer_audio(audio=media_file, caption="📥 Downloaded via @instubedownloaderbot")
+            await message.answer_audio(audio=media_file, caption=CAPTION)
         else:
-            await message.answer_video(video=media_file, caption="📥 Downloaded via @instubedownloaderbot")
+            await message.answer_video(video=media_file, caption=CAPTION)
 
-        await asyncio.to_thread(increment_downloads, message.from_user.id)
+        await asyncio.to_thread(increment_downloads, user_id)
 
     except ValueError as e:
         if str(e) == "file_too_large":
@@ -73,6 +108,8 @@ async def download_and_send(message: Message, url: str, media_type: str):
             logger.exception("Unexpected value error for %s", url)
             await message.answer("❌ Something went wrong. Please try again later.")
 
+    except MultipleMediaError:
+        await message.answer("❌ Playlists aren't supported. Please send a link to a single video.")
     except yt_dlp.utils.DownloadError as e:
         logger.error("Download failed for %s: %s", url, e)
         await message.answer("❌ Couldn't download this. It may be private, removed, or unavailable.")
@@ -85,16 +122,18 @@ async def download_and_send(message: Message, url: str, media_type: str):
 
 
 async def handle_instagram(message: Message, url: str):
-    """Instagram: try video first, fall back to images for photo posts."""
+    """Instagram: try a single video first; photo posts and carousels go to gallery-dl."""
     status_msg = await message.answer("⌛")
     image_dir = None
     filepath = None
     try:
         try:
             filepath = await asyncio.to_thread(download_video, url, "video")
-            await message.answer_video(video=FSInputFile(filepath), caption="📥 Downloaded via @instubedownloaderbot")
+            await message.answer_video(video=FSInputFile(filepath), caption=CAPTION)
             await asyncio.to_thread(increment_downloads, message.from_user.id)
             return
+        except MultipleMediaError:
+            pass  # carousel: gallery-dl returns every photo and video in it
         except yt_dlp.utils.DownloadError as e:
             if "No video formats" not in str(e):
                 raise
@@ -105,18 +144,8 @@ async def handle_instagram(message: Message, url: str):
             return
         image_dir = os.path.dirname(files[0])
 
-        fir, sec = files[:10], files[10:]
-
-        album_1 = MediaGroupBuilder(caption="📥 Downloaded via @instubedownloaderbot")
-        album_2 = MediaGroupBuilder(caption="📥 Downloaded via @instubedownloaderbot")
-        for fir_path in fir:
-            album_1.add_photo(media=FSInputFile(fir_path))
-        await message.answer_media_group(media=album_1.build())
-        if sec:
-            for sec_path in sec:
-                album_2.add_photo(media=FSInputFile(sec_path))
-            await message.answer_media_group(media=album_2.build())
-        await asyncio.to_thread(increment_downloads, message.from_user.id)
+        if await send_media_files(message, files):
+            await asyncio.to_thread(increment_downloads, message.from_user.id)
 
     except ValueError as e:
         if str(e) == "file_too_large":
@@ -149,7 +178,7 @@ async def handle_download(callback: CallbackQuery):
 
     await callback.message.delete()
 
-    await download_and_send(callback.message, url, media_type)
+    await download_and_send(callback.message, callback.from_user.id, url, media_type)
 
 
 @router.message()

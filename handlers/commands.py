@@ -24,7 +24,7 @@ async def cmd_start(message: Message):
         "• 🎤 <b>voice</b> → mp3 file (you can name it)\n"
         "• 🎥 <b>video</b> → round video note\n"
         "• ⭕ <b>video note</b> → regular video\n\n"
-        "<i>Max file size: 50 MB</i>",
+        "<i>Max size: 20 MB for files you send, 50 MB for downloads</i>",
         parse_mode="HTML",
     )
 
