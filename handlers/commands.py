@@ -3,10 +3,10 @@ import asyncio
 from aiogram import Router
 from aiogram.types import Message, FSInputFile
 from aiogram.filters import Command
-from config import is_admin
+from config import is_admin, MAX_INCOMING_FILESIZE, MAX_FILESIZE
 from services.database import get_stats
 from services.export import build_users_xlsx
-from utils.files import cleanup
+from utils.files import cleanup, size_text
 
 router = Router()
 logger = logging.getLogger(__name__)
@@ -24,7 +24,7 @@ async def cmd_start(message: Message):
         "• 🎤 <b>voice</b> → mp3 file (you can name it)\n"
         "• 🎥 <b>video</b> → round video note\n"
         "• ⭕ <b>video note</b> → regular video\n\n"
-        "<i>Max size: 20 MB for files you send, 50 MB for downloads</i>",
+        f"<i>Max size: {size_text(MAX_INCOMING_FILESIZE)} for files you send, {size_text(MAX_FILESIZE)} for downloads</i>",
         parse_mode="HTML",
     )
 

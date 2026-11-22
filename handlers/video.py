@@ -4,9 +4,9 @@ import logging
 from aiogram import F, Router
 from aiogram.types import FSInputFile, Message
 
-from config import DOWNLOADS_DIR, VIDEO_NOTE_MAX_DURATION, bot
+from config import DOWNLOADS_DIR, VIDEO_NOTE_MAX_DURATION, MAX_INCOMING_FILESIZE
 from services.converter import convert_to_video_note
-from utils.files import cleanup, is_too_large
+from utils.files import cleanup, is_too_large, download_tg_file, size_text
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -17,7 +17,7 @@ async def video_to_note(message: Message):
     video = message.video
 
     if is_too_large(video.file_size):
-        await message.reply("❌ This file is too large (over 20MB).")
+        await message.reply(f"❌ This file is too large (over {size_text(MAX_INCOMING_FILESIZE)}).")
         return
 
     # Video notes are capped by Telegram; tell the user we'll trim it.
@@ -32,7 +32,7 @@ async def video_to_note(message: Message):
     src_path = f"{DOWNLOADS_DIR}/{video.file_id}_src.mp4"
     note_path = f"{DOWNLOADS_DIR}/{video.file_id}_note.mp4"
     try:
-        await bot.download(video, destination=src_path)
+        await download_tg_file(video.file_id, destination=src_path)
         await asyncio.to_thread(convert_to_video_note, src_path, note_path)
         await message.answer_video_note(video_note=FSInputFile(note_path))
     except Exception:
@@ -48,7 +48,7 @@ async def note_to_video(message: Message):
     video_note = message.video_note
 
     if is_too_large(video_note.file_size):
-        await message.reply("❌ This file is too large (over 20MB).")
+        await message.reply(f"❌ This file is too large (over {size_text(MAX_INCOMING_FILESIZE)}).")
         return
 
     status_msg = await message.reply("⌛ Converting to video...")
@@ -57,7 +57,7 @@ async def note_to_video(message: Message):
     try:
         # Video notes are already mp4 — no conversion needed, just resend
         # them as a regular video.
-        await bot.download(video_note, destination=mp4_path)
+        await download_tg_file(video_note.file_id, destination=mp4_path)
         await message.answer_video(video=FSInputFile(mp4_path, filename="video.mp4"))
     except Exception:
         logger.exception("Video note -> mp4 conversion failed")

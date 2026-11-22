@@ -1,4 +1,3 @@
-import os
 import logging
 import sqlite3
 
@@ -20,6 +19,13 @@ def init_db() -> None:
                 last_active     TEXT DEFAULT (datetime('now')),
                 downloads_count INTEGER DEFAULT 0,
                 is_active       INTEGER DEFAULT 1
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS media_cache (
+                cache_key  TEXT PRIMARY KEY,
+                file_id    TEXT NOT NULL,
+                created_at TEXT DEFAULT (datetime('now'))
             )
         """)
     logger.info("Database ready at %s", DB_PATH)
@@ -87,3 +93,27 @@ def increment_downloads(telegram_id: int) -> None:
             "WHERE telegram_id = ?",
             (telegram_id,),
         )
+
+
+def get_cached_file_id(cache_key: str) -> str | None:
+    """ Return the Telegram file_id saved for this media, if any. """
+    with sqlite3.connect(DB_PATH) as conn:
+        row = conn.execute(
+            "SELECT file_id FROM media_cache WHERE cache_key = ?", (cache_key,)
+        ).fetchone()
+    return row[0] if row else None
+
+
+def save_cached_file_id(cache_key: str, file_id: str) -> None:
+    """ Remember the file_id of media we just sent. """
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute(
+            "INSERT OR REPLACE INTO media_cache (cache_key, file_id) VALUES (?, ?)",
+            (cache_key, file_id),
+        )
+
+
+def delete_cached_file_id(cache_key: str) -> None:
+    """ Forget a file_id that Telegram no longer accepts. """
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute("DELETE FROM media_cache WHERE cache_key = ?", (cache_key,))

@@ -4,7 +4,18 @@ import yt_dlp
 import tempfile
 import subprocess
 from config import COOKIES_FILE, DOWNLOADS_DIR, MAX_FILESIZE
+from yt_dlp.extractor import get_info_extractor
 
+CACHEABLE_EXTRACTORS = ("Youtube", "Instagram")
+
+def get_media_key(url: str, media_type: str) -> str | None:
+    """ Build a cache key like 'Youtube:<id>:video' from the URL, without network. """
+    for name in CACHEABLE_EXTRACTORS:
+        ie = get_info_extractor(name)
+        if ie.suitable(url):
+            video_id = ie.get_temp_id(url)
+            return f"{name}:{video_id}:{media_type}" if video_id else None
+    return None
 
 def download_video(url: str, media_type: str) -> str:
     """Download a link as video or audio and return the final file path."""

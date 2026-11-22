@@ -9,11 +9,15 @@ from aiogram.types import (
     CallbackQuery, FSInputFile, InlineKeyboardButton,
     InlineKeyboardMarkup, Message,
 )
+from aiogram.exceptions import TelegramBadRequest
 
 from config import MAX_FILESIZE
-from services.downloader import MultipleMediaError, download_images, download_video
-from utils.files import cleanup, cleanup_dir
-from services.database import increment_downloads
+from services.downloader import MultipleMediaError, download_images, download_video, get_media_key
+from utils.files import cleanup, cleanup_dir, size_text
+from services.database import (
+    increment_downloads, delete_cached_file_id,
+    get_cached_file_id, save_cached_file_id,
+)
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -40,7 +44,7 @@ async def send_media_files(message: Message, files: list[str]) -> int:
         if _is_image(path):
             await message.answer_photo(photo=FSInputFile(path), caption=CAPTION)
         else:
-            await message.answer_video(video=FSInputFile(path), caption=CAPTION)
+            await message.answer_video(video=FSInputFile(path), caption=CAPTION, supports_streaming=True)
     else:
         for i in range(0, len(sendable), ALBUM_LIMIT):
             album = MediaGroupBuilder(caption=CAPTION)
@@ -52,7 +56,7 @@ async def send_media_files(message: Message, files: list[str]) -> int:
             await message.answer_media_group(media=album.build())
 
     if skipped:
-        await message.answer(f"⚠️ {skipped} item(s) were skipped: larger than 50MB.")
+        await message.answer(f"⚠️ {skipped} item(s) were skipped: larger than {size_text(MAX_FILESIZE)}.")
 
     return len(sendable)
 
@@ -80,30 +84,47 @@ async def handle_story(message: Message, url: str):
             cleanup_dir(image_dir)
 
 
+async def send_media(message: Message, media_type: str, media) -> Message:
+    """ Send audio or video; `media` can be an FSInputFile or a cached file_id. """
+    if media_type == "audio":
+        return await message.answer_audio(audio=media, caption=CAPTION)
+    return await message.answer_video(video=media, caption=CAPTION, supports_streaming=True)
+
 async def download_and_send(message: Message, user_id: int, url: str, media_type: str):
     """Download a link and send it, with a status message and cleanup.
 
     `user_id` is passed explicitly: when called from a button, `message` is
     the bot's own message, so `message.from_user` would be the bot.
     """
+    cache_key = get_media_key(url, media_type)
+    if cache_key:
+        file_id = await asyncio.to_thread(get_cached_file_id, cache_key)
+        if file_id:
+            try:
+                await send_media(message, media_type, file_id)
+                await asyncio.to_thread(increment_downloads, user_id)
+                return
+            except TelegramBadRequest:
+                logger.warning("Cached file_id rejected for %s", cache_key)
+                await asyncio.to_thread(delete_cached_file_id, cache_key)
+
     status_msg = await message.answer("⌛")
     filepath = None
 
     try:
         filepath = await asyncio.to_thread(download_video, url, media_type)
 
-        media_file = FSInputFile(filepath)
-        if media_type == "audio":
-            await message.answer_audio(audio=media_file, caption=CAPTION)
-        else:
-            await message.answer_video(video=media_file, caption=CAPTION)
-
+        sent = await send_media(message, media_type, FSInputFile(filepath))
         await asyncio.to_thread(increment_downloads, user_id)
+
+        media = sent.audio if media_type == "audio" else sent.video
+        if cache_key and media:
+            await asyncio.to_thread(save_cached_file_id, cache_key, media.file_id)
 
     except ValueError as e:
         if str(e) == "file_too_large":
             logger.info("File too large for %s", url)
-            await message.answer("❌ This is too large (over 50MB). Try a shorter one.")
+            await message.answer(f"❌ This is too large (over {size_text(MAX_FILESIZE)}). Try a shorter one.")
         else:
             logger.exception("Unexpected value error for %s", url)
             await message.answer("❌ Something went wrong. Please try again later.")
@@ -129,7 +150,7 @@ async def handle_instagram(message: Message, url: str):
     try:
         try:
             filepath = await asyncio.to_thread(download_video, url, "video")
-            await message.answer_video(video=FSInputFile(filepath), caption=CAPTION)
+            await message.answer_video(video=FSInputFile(filepath), caption=CAPTION, supports_streaming=True)
             await asyncio.to_thread(increment_downloads, message.from_user.id)
             return
         except MultipleMediaError:
@@ -149,7 +170,7 @@ async def handle_instagram(message: Message, url: str):
 
     except ValueError as e:
         if str(e) == "file_too_large":
-            await message.answer("❌ This is too large (over 50MB). Try a shorter one.")
+            await message.answer(f"❌ This is too large (over {size_text(MAX_FILESIZE)}). Try a shorter one.")
         else:
             logger.exception("Unexpected value error for %s", url)
             await message.answer("❌ Something went wrong. Please try again later.")

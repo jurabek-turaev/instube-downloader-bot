@@ -9,9 +9,9 @@ from aiogram.types import (
     InlineKeyboardMarkup, Message,
 )
 
-from config import DOWNLOADS_DIR, bot
+from config import DOWNLOADS_DIR, MAX_INCOMING_FILESIZE, bot
 from services.converter import convert_audio
-from utils.files import cleanup, is_too_large
+from utils.files import cleanup, is_too_large, download_tg_file, size_text
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -26,7 +26,7 @@ async def audio_to_voice(message: Message):
     audio = message.audio
 
     if is_too_large(audio.file_size):
-        await message.reply("❌ This file is too large (over 20MB).")
+        await message.reply(f"❌ This file is too large (over {size_text(MAX_INCOMING_FILESIZE)}).")
         return
 
     status_msg = await message.reply("⌛ Converting to voice...")
@@ -34,7 +34,7 @@ async def audio_to_voice(message: Message):
     mp3_path = f"{DOWNLOADS_DIR}/{audio.file_id}.mp3"
     ogg_path = f"{DOWNLOADS_DIR}/{audio.file_id}.ogg"
     try:
-        await bot.download(audio, destination=mp3_path)
+        await download_tg_file(audio.file_id, destination=mp3_path)
         await asyncio.to_thread(convert_audio, mp3_path, ogg_path, "libopus")
         await message.answer_voice(voice=FSInputFile(ogg_path))
     except Exception:
@@ -50,7 +50,7 @@ async def voice_to_audio(message: Message, state: FSMContext):
     voice = message.voice
 
     if is_too_large(voice.file_size):
-        await message.reply("❌ This file is too large (over 20MB).")
+        await message.reply(f"❌ This file is too large (over {size_text(MAX_INCOMING_FILESIZE)}).")
         return
 
     status_msg = await message.reply("⌛ Converting to mp3...")
@@ -58,7 +58,7 @@ async def voice_to_audio(message: Message, state: FSMContext):
     ogg_path = f"{DOWNLOADS_DIR}/{voice.file_id}.ogg"
     mp3_path = f"{DOWNLOADS_DIR}/{voice.file_id}.mp3"
     try:
-        await bot.download(voice, destination=ogg_path)
+        await download_tg_file(voice.file_id, destination=ogg_path)
         await asyncio.to_thread(convert_audio, ogg_path, mp3_path, "libmp3lame")
 
         prompt = await message.answer(

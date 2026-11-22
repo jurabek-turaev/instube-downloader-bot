@@ -2,6 +2,8 @@ import logging
 import os
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.client.session.aiohttp import AiohttpSession
+from aiogram.client.telegram import TelegramAPIServer
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -22,15 +24,31 @@ def is_admin(telegram_id: int) -> bool:
 
 
 DOWNLOADS_DIR = "downloads"
-# Bot API limit for files the bot uploads (sendVideo, sendAudio, ...).
-MAX_FILESIZE = 50 * 1024 * 1024
-# Bot API limit for files the bot downloads from users (getFile).
-MAX_INCOMING_FILESIZE = 20 * 1024 * 1024
 
 VIDEO_NOTE_SIZE = 384
 VIDEO_NOTE_MAX_DURATION = 60
 
 
+MB = 1024 * 1024
 
-bot = Bot(BOT_TOKEN)
+LOCAL_API_URL = os.getenv("LOCAL_API_URL")
+USE_LOCAL_API = bool(LOCAL_API_URL)
+
+if USE_LOCAL_API:
+    # Local Bot API server: no getFile limit, uploads up to 2000MB
+    MAX_FILESIZE = 2000 * MB
+    MAX_INCOMING_FILESIZE = 2000 * MB
+else:
+    MAX_FILESIZE = 50 * MB
+    MAX_INCOMING_FILESIZE = 20 * MB
+
+
+session = None
+if USE_LOCAL_API:
+    session = AiohttpSession(
+        api=TelegramAPIServer.from_base(LOCAL_API_URL, is_local=True),
+        timeout=900,
+    )
+
+bot = Bot(BOT_TOKEN, session=session)
 dp = Dispatcher(storage=MemoryStorage())
