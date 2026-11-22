@@ -6,6 +6,10 @@ RUN apt-get update \
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
+# yt-dlp needs a JavaScript runtime (deno) to solve YouTube's player
+# challenges; without it YouTube formats are missing or return 403.
+COPY --from=denoland/deno:bin-2.9.8 /deno /usr/local/bin/deno
+
 WORKDIR /app
 
 ENV PYTHONUNBUFFERED=1
