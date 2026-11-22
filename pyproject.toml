@@ -1,9 +1,9 @@
 [project]
-name = "video-downloader-bot"
+name = "instube-downloader-bot"
 version = "0.1.0"
-description = "Add your description here"
+description = "Telegram bot that downloads YouTube/Instagram media and converts beetween Telegram formats"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
     "aiogram>=3.25.0",
     "python-dotenv>=1.2.2",
