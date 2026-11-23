@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import os
-
+from aiogram.types import BotCommand
 from config import DOWNLOADS_DIR, bot, dp
 from handlers import audio, commands, links, video
 from services.database import init_db
@@ -22,6 +22,11 @@ async def main():
     dp.include_router(video.router)
     dp.include_router(links.router)
 
+    await bot.set_my_commands([
+        BotCommand(command="start", description="Start the bot"),
+        BotCommand(command="help", description="How to use the bot"),
+    ])
+    
     logger.info("Bot started...")
     await dp.start_polling(bot)
 
